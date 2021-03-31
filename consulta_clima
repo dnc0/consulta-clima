@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+# coding: utf-8
+"""
+consulta_tempo
+Marlon Soares marlonslbr@gmail.com
+2021
+"""
+#======= imports =======
+import argparse,requests,json
+#======= constants =======
+__VERSION = "1.0"
+TOKEN=""
+#======= variables =======
+#======= flags =======
+verbose = False
+#======= objects =======
+parser = argparse.ArgumentParser()
+#======= functions =======
+def error(message,code):
+    print(f"error: {message}")
+    if code >=0:
+        exit(code)
+def pesquisarCidade(nome):
+	url = f"http://apiadvisor.climatempo.com.br/api/v1/locale/city?name={nome}&token={TOKEN}"
+	resposta = requests.request("GET",url)
+	json_resultado = json.loads(resposta.text)
+	if verbose:
+		print(json_resultado)
+	else:
+		if "error" in json_resultado:
+			error(json_resultado['detail'],2)
+		print("Resultados:")
+		for resultado in json_resultado:
+			cidade_id = resultado["id"]
+			cidade_nome = resultado["name"]
+			cidade_estado = resultado["state"]
+			print(f"{cidade_nome} [{cidade_estado}] -> {cidade_id}")
+def adicionarCidade(id):
+	url = f"http://apiadvisor.climatempo.com.br/api-manager/user-token/{TOKEN}/locales"
+	payload = f"localeId[]={id}"
+	headers = { "Content-Type": "application/x-www-form-urlencoded"}
+	resposta = requests.request("PUT",url,headers=headers,data=payload)
+	json_resultado = json.loads(resposta.text)
+	if verbose:
+		print(json_resultado)
+	else:
+		if "error" in json_resultado:
+			error(json_resultado["detail"],2)
+def obterCidadesRegistradas():
+	url = f"http://apiadvisor.climatempo.com.br/api-manager/user-token/{TOKEN}/locales"
+	resposta = requests.request("GET",url)
+	json_resultado = json.loads(resposta.text)
+	if verbose:
+		print(json_resultado)
+	else:
+		if "error" in json_resultado:
+			error(json_resultado['detail'],2)
+			return
+		for cidade in json_resultado["locales"]:
+			print(f"Cidade ID: {cidade}")
+def consultaClima(id):
+	url = f"http://apiadvisor.climatempo.com.br/api/v1/weather/locale/{id}/current?token={TOKEN}"
+	resposta = requests.request("GET",url)
+	json_resultado = json.loads(resposta.text)
+	if verbose:
+		print(resposta.text)
+	else:
+		if "error" in json_resultado:
+			error(json_resultado['detail'],2)
+		#cidade_ = json_resultado[""]
+		#cidade_ = json_resultado["data"][""]
+		cidade_nome = json_resultado["name"]
+		cidade_estado = json_resultado["state"]
+		cidade_pais = json_resultado["country"]
+		cidade_temperatura = json_resultado["data"]["temperature"]
+		cidade_velocidade_vento = json_resultado["data"]["wind_velocity"]
+		cidade_humidade = json_resultado["data"]["humidity"]
+		cidade_condicao = json_resultado["data"]["condition"]
+		cidade_sensacao = json_resultado["data"]["sensation"]
+		cidade_data = json_resultado["data"]["date"]
+		string_tempo = f"{cidade_nome} {cidade_estado} {cidade_pais}\n{cidade_temperatura}ºC (sensação {cidade_sensacao}ºC)\
+		\n{cidade_condicao}\nverificado em {cidade_data}"
+		print(string_tempo)
+#======= setup argument parser ======= 
+#parser.add_argument("","--",help="")
+parser.add_argument("-v","--verbose",action="store_true",help="mostrar o retorno das requisições")
+parser.add_argument("--pesquisar-cidade",type=str,help="procura ID da cidade pelo nome")
+parser.add_argument("--adicionar-cidade",type=int,help="registra a cidade para o token do usuário")
+parser.add_argument("--registradas",action="store_true",help="lista as cidades registradas no token do usuário")
+parser.add_argument("--clima",type=int,help="consulta informações sobre o clima em uma das cidades registradas")
+args = parser.parse_args()
+#======= start execution ======= 
+if args.verbose:
+	verbose = True
+if args.pesquisar_cidade:
+	pesquisarCidade(args.pesquisar_cidade.replace(" ","_"))
+if args.adicionar_cidade:
+	adicionarCidade(args.adicionar_cidade)
+if args.registradas:
+	obterCidadesRegistradas()
+if args.clima:
+	consultaClima(args.clima)

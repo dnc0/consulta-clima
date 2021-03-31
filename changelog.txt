@@ -1,0 +1,5 @@
+v1.0
+-permite pesquisar o ID da cidade pelo nome
+-permite adicionar uma cidade ao token do usuário
+-permite consultar o clima da cidade
+-permite listar todas as cidades registradas no token do usuário
