@@ -3,3 +3,8 @@ v1.0
 -permite adicionar uma cidade ao token do usuário
 -permite consultar o clima da cidade
 -permite listar todas as cidades registradas no token do usuário
+v1.1
+-se o token não for informado no arquivo fonte, verificar a variável
+de ambiente "CLIMA_TEMPO_TOKEN"
+-se o token não for informado na variável de ambiente ,ler arquivo
+de configuração "/home/user/.clima_tempo"

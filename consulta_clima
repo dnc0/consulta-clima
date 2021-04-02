@@ -6,20 +6,37 @@ Marlon Soares marlonslbr@gmail.com
 2021
 """
 #======= imports =======
-import argparse,requests,json
+import argparse,requests,json,os,configparser
 #======= constants =======
-__VERSION = "1.0"
-TOKEN=""
+__VERSION = "1.1"
 #======= variables =======
+TOKEN=""
+TOKEN_FILE=f"{os.environ.get('HOME')}/.clima_tempo"
 #======= flags =======
 verbose = False
 #======= objects =======
 parser = argparse.ArgumentParser()
+config_parser = configparser.ConfigParser()
 #======= functions =======
 def error(message,code):
     print(f"error: {message}")
     if code >=0:
         exit(code)
+def lerToken():
+	global TOKEN
+	if not TOKEN:
+		env_token = os.environ.get("CLIMA_TEMPO_TOKEN")
+		if env_token:
+			TOKEN = env_token
+		else:
+			#print(f"getting from file {TOKEN_FILE}")
+			if not os.path.exists(TOKEN_FILE):
+				error(f"config file \"{TOKEN_FILE}\" not exist",7)
+			config_parser.read(TOKEN_FILE)
+			if config_parser["api_clima_tempo"]["token"]:
+				TOKEN = config_parser["api_clima_tempo"]["token"]
+			else:
+				error("token not present in configfile",6)
 def pesquisarCidade(nome):
 	url = f"http://apiadvisor.climatempo.com.br/api/v1/locale/city?name={nome}&token={TOKEN}"
 	resposta = requests.request("GET",url)
@@ -90,6 +107,9 @@ parser.add_argument("--registradas",action="store_true",help="lista as cidades r
 parser.add_argument("--clima",type=int,help="consulta informações sobre o clima em uma das cidades registradas")
 args = parser.parse_args()
 #======= start execution ======= 
+lerToken()
+if not TOKEN:
+	error("token not set",5)
 if args.verbose:
 	verbose = True
 if args.pesquisar_cidade:
