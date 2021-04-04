@@ -8,37 +8,50 @@ Marlon Soares marlonslbr@gmail.com
 #======= imports =======
 import argparse,requests,json,os,configparser
 #======= constants =======
-__VERSION = "1.1"
+__VERSION = "1.2"
 #======= variables =======
-TOKEN=""
-TOKEN_FILE=f"{os.environ.get('HOME')}/.clima_tempo"
+token=""
+config_filename=f"{os.environ.get('HOME')}/.clima_tempo"
+id_cidade=None
 #======= flags =======
 verbose = False
 #======= objects =======
 parser = argparse.ArgumentParser()
 config_parser = configparser.ConfigParser()
 #======= functions =======
-def error(message,code):
+def error(message,code=1):
     print(f"error: {message}")
     if code >=0:
         exit(code)
 def lerToken():
-	global TOKEN
-	if not TOKEN:
+	global token
+	if not token:
 		env_token = os.environ.get("CLIMA_TEMPO_TOKEN")
 		if env_token:
-			TOKEN = env_token
+			token = env_token
 		else:
-			#print(f"getting from file {TOKEN_FILE}")
-			if not os.path.exists(TOKEN_FILE):
-				error(f"config file \"{TOKEN_FILE}\" not exist",7)
-			config_parser.read(TOKEN_FILE)
-			if config_parser["api_clima_tempo"]["token"]:
-				TOKEN = config_parser["api_clima_tempo"]["token"]
-			else:
-				error("token not present in configfile",6)
+			if verbose:
+				print(f"lendo token do arquivo de configuração {config_filename}")
+			if not os.path.exists(config_filename):
+				error(f"arquivo de configuração \"{config_filename}\" nçao existe",7)
+			config_parser.read(config_filename)
+			try:
+				if config_parser["api_clima_tempo"]["token"]:
+					token = config_parser["api_clima_tempo"]["token"]
+				else:
+					error("token não foi informado no arquivo de configuração",6)
+			except:
+				error("ao ler arquivo de configuração")
+def lerCidadePadrao():
+	global id_cidade
+	global verbose
+	if config_parser["api_clima_tempo"]["cidade"]:
+		id_cidade = config_parser["api_clima_tempo"]["cidade"]
+	else:
+		if verbose:
+			print(f"aviso: não foi possível lêr cidade padrão")
 def pesquisarCidade(nome):
-	url = f"http://apiadvisor.climatempo.com.br/api/v1/locale/city?name={nome}&token={TOKEN}"
+	url = f"http://apiadvisor.climatempo.com.br/api/v1/locale/city?name={nome}&token={token}"
 	resposta = requests.request("GET",url)
 	json_resultado = json.loads(resposta.text)
 	if verbose:
@@ -53,7 +66,7 @@ def pesquisarCidade(nome):
 			cidade_estado = resultado["state"]
 			print(f"{cidade_nome} [{cidade_estado}] -> {cidade_id}")
 def adicionarCidade(id):
-	url = f"http://apiadvisor.climatempo.com.br/api-manager/user-token/{TOKEN}/locales"
+	url = f"http://apiadvisor.climatempo.com.br/api-manager/user-token/{token}/locales"
 	payload = f"localeId[]={id}"
 	headers = { "Content-Type": "application/x-www-form-urlencoded"}
 	resposta = requests.request("PUT",url,headers=headers,data=payload)
@@ -64,7 +77,7 @@ def adicionarCidade(id):
 		if "error" in json_resultado:
 			error(json_resultado["detail"],2)
 def obterCidadesRegistradas():
-	url = f"http://apiadvisor.climatempo.com.br/api-manager/user-token/{TOKEN}/locales"
+	url = f"http://apiadvisor.climatempo.com.br/api-manager/user-token/{token}/locales"
 	resposta = requests.request("GET",url)
 	json_resultado = json.loads(resposta.text)
 	if verbose:
@@ -76,7 +89,7 @@ def obterCidadesRegistradas():
 		for cidade in json_resultado["locales"]:
 			print(f"Cidade ID: {cidade}")
 def consultaClima(id):
-	url = f"http://apiadvisor.climatempo.com.br/api/v1/weather/locale/{id}/current?token={TOKEN}"
+	url = f"http://apiadvisor.climatempo.com.br/api/v1/weather/locale/{id}/current?token={token}"
 	resposta = requests.request("GET",url)
 	json_resultado = json.loads(resposta.text)
 	if verbose:
@@ -98,20 +111,31 @@ def consultaClima(id):
 		string_tempo = f"{cidade_nome} {cidade_estado} {cidade_pais}\n{cidade_temperatura}ºC (sensação {cidade_sensacao}ºC)\
 		\n{cidade_condicao}\nverificado em {cidade_data}"
 		print(string_tempo)
+def definirCidadePadrao(id):
+	config_parser["api_clima_tempo"]["cidade"] = str(id)
+	with open(config_filename,"w") as configfile:
+		config_parser.write(configfile)
 #======= setup argument parser ======= 
 #parser.add_argument("","--",help="")
 parser.add_argument("-v","--verbose",action="store_true",help="mostrar o retorno das requisições")
+parser.add_argument("-i","--id-cidade",type=int,help="informa diretamente o ID da cidade")
 parser.add_argument("--pesquisar-cidade",type=str,help="procura ID da cidade pelo nome")
 parser.add_argument("--adicionar-cidade",type=int,help="registra a cidade para o token do usuário")
 parser.add_argument("--registradas",action="store_true",help="lista as cidades registradas no token do usuário")
-parser.add_argument("--clima",type=int,help="consulta informações sobre o clima em uma das cidades registradas")
+parser.add_argument("--clima",action="store_true",help="consulta informações sobre o clima em uma das cidades registradas")
+parser.add_argument("--definir-cidade-padrao",type=int,help="salvar o ID da cidade localmente")
 args = parser.parse_args()
 #======= start execution ======= 
-lerToken()
-if not TOKEN:
-	error("token not set",5)
 if args.verbose:
 	verbose = True
+lerToken()
+lerCidadePadrao()
+if not token:
+	error("token not set",5)
+if args.id_cidade:
+	id_cidade = args.id_cidade
+if args.definir_cidade_padrao:
+	definirCidadePadrao(args.definir_cidade_padrao)
 if args.pesquisar_cidade:
 	pesquisarCidade(args.pesquisar_cidade.replace(" ","_"))
 if args.adicionar_cidade:
@@ -119,4 +143,6 @@ if args.adicionar_cidade:
 if args.registradas:
 	obterCidadesRegistradas()
 if args.clima:
-	consultaClima(args.clima)
+	if not id_cidade:
+		error("o ID da cidade não foi fornecido")
+	consultaClima(id_cidade)

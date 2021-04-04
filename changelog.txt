@@ -1,10 +1,21 @@
-v1.0
--permite pesquisar o ID da cidade pelo nome
--permite adicionar uma cidade ao token do usuário
--permite consultar o clima da cidade
--permite listar todas as cidades registradas no token do usuário
+v1.2
+-adicionada opção "--definir-cidade-padrao"
+-ao definir cidade padrao,salvar no arquivo de configuração
+-opção "--clima" não necessita de argumento(id da cidade)
+-adicionada opção "-i","--id-cidade" para definir o ID da
+cidade diretamente
+-adicionada opção "-v","--verbose"
+-adicionado "try/catch" ao ler token no arquivo de configuração
+
 v1.1
 -se o token não for informado no arquivo fonte, verificar a variável
 de ambiente "CLIMA_TEMPO_TOKEN"
 -se o token não for informado na variável de ambiente ,ler arquivo
 de configuração "/home/user/.clima_tempo"
+
+v1.0
+-permite pesquisar o ID da cidade pelo nome
+-permite adicionar uma cidade ao token do usuário
+-permite consultar o clima da cidade
+-permite listar todas as cidades registradas no token do usuário
+
